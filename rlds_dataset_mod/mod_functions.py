@@ -162,12 +162,43 @@ class FlipImgChannels(TfdsModFunction):
 class FlipWristImgChannels(FlipImgChannels):
     FLIP_KEYS = ["wrist_image", "hand_image"]
 
+class EncodeActionToLatent(TfdsModFunction):
+    SOURCE_MODALITY = ...
+
+    def __init__(self, model_path, model_epoch, device='cpu'):
+        from mmvaes import MMVAEPlusWrapper
+        self.model = MMVAEPlusWrapper(model_path, model_epoch, device)
+
+    @classmethod
+    def mod_features(cls, features: tfds.features.FeaturesDict) -> tfds.features.FeaturesDict:
+        return features
+
+    @classmethod
+    def mod_dataset(cls, ds: tf.data.Dataset) -> tf.data.Dataset:
+        def encode_action_to_latent(step):
+            step["action"] = cls.model.encode_data(step["action"], cls.SOURCE_MODALITY)
+            step["action"] = step["action"].numpy()
+            return step
+
+        return ds.map(encode_action_to_latent)
+
+class EncodeManoParamsToLatent(EncodeActionToLatent):
+    SOURCE_MODALITY = 'mano_params'
+
+class EncodeGcAnglesToLatent(EncodeActionToLatent):
+    SOURCE_MODALITY = 'gc_angles'
+
+class EncodeSimpleGripperToLatent(EncodeActionToLatent):
+    SOURCE_MODALITY = 'simple_gripper'
 
 TFDS_MOD_FUNCTIONS = {
     "resize_and_jpeg_encode": ResizeAndJpegEncode,
     "filter_success": FilterSuccess,
     "flip_image_channels": FlipImgChannels,
     "flip_wrist_image_channels": FlipWristImgChannels,
+    "encode_mano_params_to_latent": EncodeManoParamsToLatent,
+    "encode_gc_angles_to_latent": EncodeGcAnglesToLatent,
+    "encode_simple_gripper_to_latent": EncodeSimpleGripperToLatent,
 }
 
 
