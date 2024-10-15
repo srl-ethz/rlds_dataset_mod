@@ -51,6 +51,26 @@ def mod_obs_features(features, obs_feature_mod_function):
         }
     )
 
+def mod_action_features(features, action_feature_mod_function):
+    """Utility function to only modify keys in action dict."""
+    return tfds.features.FeaturesDict(
+        {
+            "steps": tfds.features.Dataset(
+                {
+                    "action": action_feature_mod_function(
+                        features["steps"]["action"]
+                    ),
+                    **{
+                        key: features["steps"][key]
+                        for key in features["steps"].keys()
+                        if key not in ("action",)
+                    },
+                }
+            ),
+            **{key: features[key] for key in features.keys() if key not in ("steps",)},
+        }
+    )
+
 
 class ResizeAndJpegEncode(TfdsModFunction):
     MAX_RES: int = 256
@@ -162,34 +182,61 @@ class FlipImgChannels(TfdsModFunction):
 class FlipWristImgChannels(FlipImgChannels):
     FLIP_KEYS = ["wrist_image", "hand_image"]
 
+from mmvaes import MMVAEPlusWrapper
+import numpy as np
+
 class EncodeActionToLatent(TfdsModFunction):
     SOURCE_MODALITY = ...
-
-    def __init__(self, model_path, model_epoch, device='cpu'):
-        from mmvaes import MMVAEPlusWrapper
-        self.model = MMVAEPlusWrapper(model_path, model_epoch, device)
+    NEW_ACTION_DIM = ...
+    MODEL_PATH = '/home/erbauer/vaes/mmvaeplus/outputs/RobotActions_1/checkpoints/cerulean-sound-56/'
+    MODEL_EPOCH = 'best'
+    # torch with CUDA and tensorflow without CUDA don't get along well
+    DEVICE = 'cpu'
 
     @classmethod
     def mod_features(cls, features: tfds.features.FeaturesDict) -> tfds.features.FeaturesDict:
-        return features
+        def action_mod_function(action):
+            # Use the actual shape of the encoded action
+            return tfds.features.Tensor(shape=(None,), dtype=np.float32, doc=f'Encoded action. First 6 dims remain the same, the rest is encoded. Previous annotation: {action.doc}')
+        
+        return mod_action_features(features, action_mod_function)
 
     @classmethod
     def mod_dataset(cls, ds: tf.data.Dataset) -> tf.data.Dataset:
-        def encode_action_to_latent(step):
-            step["action"] = cls.model.encode_data(step["action"], cls.SOURCE_MODALITY)
-            step["action"] = step["action"].numpy()
+        model = MMVAEPlusWrapper(cls.MODEL_PATH, cls.MODEL_EPOCH, cls.DEVICE)
+        # print(f'Using model {cls.MODEL_PATH} at epoch {cls.MODEL_EPOCH} on {cls.DEVICE} to encode {cls.SOURCE_MODALITY} to latent')
+
+        def encode_action_to_latent(action):
+            encoded_action = tf.py_function(
+                func=lambda x: model.encode_data(x.numpy(), cls.SOURCE_MODALITY),
+                inp=[action],
+                Tout=tf.float32
+            )
+            # Don't set a specific shape, allow it to be flexible
+            encoded_action.set_shape((None,))
+            return encoded_action
+
+        def process_step(step):
+            step["action"] = encode_action_to_latent(step["action"])
             return step
 
-        return ds.map(encode_action_to_latent)
+        def episode_map_fn(episode):
+            episode["steps"] = episode["steps"].map(process_step)
+            return episode
+
+        return ds.map(episode_map_fn)
 
 class EncodeManoParamsToLatent(EncodeActionToLatent):
     SOURCE_MODALITY = 'mano_params'
+    NEW_ACTION_DIM = 51  # 6 + 45
 
 class EncodeGcAnglesToLatent(EncodeActionToLatent):
     SOURCE_MODALITY = 'gc_angles'
+    NEW_ACTION_DIM = 17  # 6 + 11
 
 class EncodeSimpleGripperToLatent(EncodeActionToLatent):
     SOURCE_MODALITY = 'simple_gripper'
+    NEW_ACTION_DIM = 7  # 6 + 1
 
 TFDS_MOD_FUNCTIONS = {
     "resize_and_jpeg_encode": ResizeAndJpegEncode,
@@ -200,5 +247,6 @@ TFDS_MOD_FUNCTIONS = {
     "encode_gc_angles_to_latent": EncodeGcAnglesToLatent,
     "encode_simple_gripper_to_latent": EncodeSimpleGripperToLatent,
 }
+
 
 

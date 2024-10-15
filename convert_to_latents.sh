@@ -13,8 +13,8 @@ Adjust workers to fit the available memory of your machine, the more workers + e
 The default values are tested with a server with ~120GB of RAM and 24 cores.
 '
 
-DOWNLOAD_DIR='/data/erbauer/oxe_dataset/downloads'
-CONVERSION_DIR='/data2/erbauer/'
+SOURCE_DIR='/mnt/data1/erbauer/oxe_latents/source'
+TARGET_DIR='/mnt/data1/erbauer/oxe_latents/converted'
 N_WORKERS=20               # number of workers used for parallel conversion --> adjust based on available RAM
 MAX_EPISODES_IN_MEMORY=100 # number of episodes converted in parallel --> adjust based on available RAM
 
@@ -22,15 +22,12 @@ MAX_EPISODES_IN_MEMORY=100 # number of episodes converted in parallel --> adjust
 # in /tmp to store dataset during conversion
 ulimit -n 20000
 
-echo "!!! Warning: This script downloads the Bridge dataset from the Open X-Embodiment bucket, which is currently outdated !!!"
-echo "!!! Instead download the bridge_dataset from here: https://rail.eecs.berkeley.edu/datasets/bridge_release/data/tfds/ !!!"
-
 # format: [dataset_name, dataset_version, transforms]
 DATASET_TRANSFORMS=(
 	# "fractal20220817_data 0.1.0 resize_and_jpeg_encode"
 	# "bridge 0.1.0 resize_and_jpeg_encode"
 	# "kuka 0.1.0 resize_and_jpeg_encode,filter_success"
-	"taco_play 0.1.0 resize_and_jpeg_encode"
+	# "taco_play 0.1.0 resize_and_jpeg_encode"
 	# "jaco_play 0.1.0 resize_and_jpeg_encode"
 	# "berkeley_cable_routing 0.1.0 resize_and_jpeg_encode"
 	# "roboturk 0.1.0 resize_and_jpeg_encode"
@@ -52,6 +49,9 @@ DATASET_TRANSFORMS=(
 	# "utaustin_mutex 0.1.0 resize_and_jpeg_encode,flip_wrist_image_channels,flip_image_channels"
 	# "berkeley_fanuc_manipulation 0.1.0 resize_and_jpeg_encode,flip_wrist_image_channels,flip_image_channels"
 	# "cmu_stretch 0.1.0 resize_and_jpeg_encode"
+	# "faive_plush_pick_dataset 1.0.0 encode_gc_angles_to_latent"
+	# "dexycb_dataset 1.0.0 encode_mano_params_to_latent"
+	"bridge_dataset 1.0.0 encode_simple_gripper_to_latent"
 )
 
 for tuple in "${DATASET_TRANSFORMS[@]}"; do
@@ -60,9 +60,5 @@ for tuple in "${DATASET_TRANSFORMS[@]}"; do
 	DATASET=${strings[0]}
 	VERSION=${strings[1]}
 	TRANSFORM=${strings[2]}
-	mkdir ${DOWNLOAD_DIR}/${DATASET}
-	gsutil -m cp -r gs://gresearch/robotics/${DATASET}/${VERSION} ${DOWNLOAD_DIR}/${DATASET}
-	python3 modify_rlds_dataset.py --dataset=$DATASET --data_dir=$DOWNLOAD_DIR --target_dir=$CONVERSION_DIR --mods=$TRANSFORM --n_workers=$N_WORKERS --max_episodes_in_memory=$MAX_EPISODES_IN_MEMORY
-	rm -rf ${DOWNLOAD_DIR}/${DATASET}
-	mv ${CONVERSION_DIR}/${DATASET} ${DOWNLOAD_DIR}
+	python3 modify_rlds_dataset.py --dataset=$DATASET --data_dir=$SOURCE_DIR --target_dir=$TARGET_DIR --mods=$TRANSFORM --n_workers=$N_WORKERS --max_episodes_in_memory=$MAX_EPISODES_IN_MEMORY
 done
