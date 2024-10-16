@@ -187,7 +187,7 @@ import numpy as np
 
 class EncodeActionToLatent(TfdsModFunction):
     SOURCE_MODALITY = ...
-    NEW_ACTION_DIM = ...
+    NEW_ACTION_DIM = 70 # 6dims for pose and 64 for latents
     MODEL_PATH = '/home/erbauer/vaes/mmvaeplus/outputs/RobotActions_1/checkpoints/cerulean-sound-56/'
     MODEL_EPOCH = 'best'
     # torch with CUDA and tensorflow without CUDA don't get along well
@@ -197,7 +197,7 @@ class EncodeActionToLatent(TfdsModFunction):
     def mod_features(cls, features: tfds.features.FeaturesDict) -> tfds.features.FeaturesDict:
         def action_mod_function(action):
             # Use the actual shape of the encoded action
-            return tfds.features.Tensor(shape=(None,), dtype=np.float32, doc=f'Encoded action. First 6 dims remain the same, the rest is encoded. Previous annotation: {action.doc}')
+            return tfds.features.Tensor(shape=(cls.NEW_ACTION_DIM,), dtype=np.float32, doc=f'Encoded action. First 6 dims remain the same, the rest is encoded. Previous annotation: {action.doc}')
         
         return mod_action_features(features, action_mod_function)
 
@@ -228,15 +228,12 @@ class EncodeActionToLatent(TfdsModFunction):
 
 class EncodeManoParamsToLatent(EncodeActionToLatent):
     SOURCE_MODALITY = 'mano_params'
-    NEW_ACTION_DIM = 51  # 6 + 45
 
 class EncodeGcAnglesToLatent(EncodeActionToLatent):
     SOURCE_MODALITY = 'gc_angles'
-    NEW_ACTION_DIM = 17  # 6 + 11
 
 class EncodeSimpleGripperToLatent(EncodeActionToLatent):
     SOURCE_MODALITY = 'simple_gripper'
-    NEW_ACTION_DIM = 7  # 6 + 1
 
 TFDS_MOD_FUNCTIONS = {
     "resize_and_jpeg_encode": ResizeAndJpegEncode,

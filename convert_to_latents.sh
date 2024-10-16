@@ -13,7 +13,7 @@ Adjust workers to fit the available memory of your machine, the more workers + e
 The default values are tested with a server with ~120GB of RAM and 24 cores.
 '
 
-SOURCE_DIR='/mnt/data1/erbauer/oxe_latents/source'
+SOURCE_DIR='/mnt/data/erbauer/oxe_dataset/downloads/'
 TARGET_DIR='/mnt/data1/erbauer/oxe_latents/converted'
 N_WORKERS=20               # number of workers used for parallel conversion --> adjust based on available RAM
 MAX_EPISODES_IN_MEMORY=100 # number of episodes converted in parallel --> adjust based on available RAM
@@ -49,8 +49,12 @@ DATASET_TRANSFORMS=(
 	# "utaustin_mutex 0.1.0 resize_and_jpeg_encode,flip_wrist_image_channels,flip_image_channels"
 	# "berkeley_fanuc_manipulation 0.1.0 resize_and_jpeg_encode,flip_wrist_image_channels,flip_image_channels"
 	# "cmu_stretch 0.1.0 resize_and_jpeg_encode"
-	# "faive_plush_pick_dataset 1.0.0 encode_gc_angles_to_latent"
-	# "dexycb_dataset 1.0.0 encode_mano_params_to_latent"
+	"faive_bottle_pick_dataset 1.0.0 encode_gc_angles_to_latent"
+	"faive_cube_sort_dataset 1.0.0 encode_gc_angles_to_latent"
+	"faive_pokemon_pick_dataset 1.0.0 encode_gc_angles_to_latent"
+	"faive_towel_wipe_dataset 1.0.0 encode_gc_angles_to_latent"
+	"faive_plush_pick_dataset 1.0.0 encode_gc_angles_to_latent"
+	"dexycb_dataset 1.0.0 encode_mano_params_to_latent"
 	"bridge_dataset 1.0.0 encode_simple_gripper_to_latent"
 )
 
