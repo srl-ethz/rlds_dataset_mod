@@ -182,14 +182,24 @@ class FlipImgChannels(TfdsModFunction):
 class FlipWristImgChannels(FlipImgChannels):
     FLIP_KEYS = ["wrist_image", "hand_image"]
 
-from mmvaes import MMVAEPlusWrapper
+from mmvaes import MMVAEPlusWrapper, RobotCLIPWrapper
 import numpy as np
 
 class EncodeActionToLatent(TfdsModFunction):
     SOURCE_MODALITY = ...
-    NEW_ACTION_DIM = 70 # 6dims for pose and 64 for latents
-    MODEL_PATH = '/home/erbauer/vaes/mmvaeplus/outputs/RobotActions_1/checkpoints/cerulean-sound-56/'
-    MODEL_EPOCH = 'best'
+
+    # MMVAEPLUS
+    # NEW_ACTION_DIM = 70 # 6dims for pose and 64 for latents
+    # MODEL_PATH = '/home/erbauer/vaes/mmvaeplus/outputs/RobotActions_1/checkpoints/autumn-pyramid-58/'
+    # MODEL_EPOCH = 'best'
+
+
+    # ROBOTCLIP
+    NEW_ACTION_DIM = 70
+    MODEL_PATH = '/home/erbauer/robot_clip/checkpoints_two_step'
+    MODEL_CHECKPOINT_NAME = 'lyric-dragon-13'
+    MODEL_EPOCH = '200'
+
     # torch with CUDA and tensorflow without CUDA don't get along well
     DEVICE = 'cpu'
 
@@ -203,7 +213,8 @@ class EncodeActionToLatent(TfdsModFunction):
 
     @classmethod
     def mod_dataset(cls, ds: tf.data.Dataset) -> tf.data.Dataset:
-        model = MMVAEPlusWrapper(cls.MODEL_PATH, cls.MODEL_EPOCH, cls.DEVICE)
+        # model = MMVAEPlusWrapper(cls.MODEL_PATH, cls.MODEL_EPOCH, cls.DEVICE)
+        model = RobotCLIPWrapper(cls.MODEL_PATH, cls.MODEL_CHECKPOINT_NAME, cls.MODEL_EPOCH, cls.DEVICE)
         # print(f'Using model {cls.MODEL_PATH} at epoch {cls.MODEL_EPOCH} on {cls.DEVICE} to encode {cls.SOURCE_MODALITY} to latent')
 
         def encode_action_to_latent(action):
